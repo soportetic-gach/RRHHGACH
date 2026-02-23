@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Edit2, Trash2, Building, MapPin, Briefcase, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Building, MapPin, Briefcase, Search, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-type CatalogType = 'departments' | 'positions' | 'campuses';
+type CatalogType = 'departments' | 'positions' | 'campuses' | 'leave_types';
 
 interface CatalogItem {
     id: string;
     name: string;
     location?: string; // Only for campuses
     department_id?: string; // Only for positions
+    consumes_vacation?: boolean; // Only for leave_types
     departments?: { name: string }; // For join display
 }
 
@@ -24,7 +25,7 @@ export default function Catalogs() {
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
-    const [formData, setFormData] = useState({ name: '', location: '', department_id: '' });
+    const [formData, setFormData] = useState({ name: '', location: '', department_id: '', consumes_vacation: false });
     const [saving, setSaving] = useState(false);
 
     // Departments for dropdowns when in 'positions' tab
@@ -65,16 +66,17 @@ export default function Catalogs() {
             case 'departments': return 'Departamentos';
             case 'positions': return 'Puestos';
             case 'campuses': return 'Sedes';
+            case 'leave_types': return 'Tipos de Permiso';
         }
     };
 
     const openModal = (item?: CatalogItem) => {
         if (item) {
             setEditingItem(item);
-            setFormData({ name: item.name, location: item.location || '', department_id: item.department_id || '' });
+            setFormData({ name: item.name, location: item.location || '', department_id: item.department_id || '', consumes_vacation: item.consumes_vacation || false });
         } else {
             setEditingItem(null);
-            setFormData({ name: '', location: '', department_id: departmentsList[0]?.id || '' });
+            setFormData({ name: '', location: '', department_id: departmentsList[0]?.id || '', consumes_vacation: false });
         }
         setIsModalOpen(true);
     };
@@ -82,7 +84,7 @@ export default function Catalogs() {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingItem(null);
-        setFormData({ name: '', location: '', department_id: '' });
+        setFormData({ name: '', location: '', department_id: '', consumes_vacation: false });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -109,6 +111,8 @@ export default function Catalogs() {
                     return;
                 }
                 payload.department_id = formData.department_id;
+            } else if (activeTab === 'leave_types') {
+                payload.consumes_vacation = formData.consumes_vacation;
             }
 
             if (editingItem) {
@@ -193,6 +197,13 @@ export default function Catalogs() {
                         <MapPin size={18} />
                         Sedes
                     </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'leave_types' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('leave_types')}
+                    >
+                        <Calendar size={18} />
+                        Permisos y Ausencias
+                    </button>
                 </div>
 
                 <div className="filters-bar" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
@@ -222,6 +233,7 @@ export default function Catalogs() {
                                     <th>Nombre</th>
                                     {activeTab === 'campuses' && <th>Ubicación</th>}
                                     {activeTab === 'positions' && <th>Departamento</th>}
+                                    {activeTab === 'leave_types' && <th>Resta de Vacaciones</th>}
                                     <th style={{ width: '120px' }}>Acciones</th>
                                 </tr>
                             </thead>
@@ -232,6 +244,7 @@ export default function Catalogs() {
                                             <td style={{ fontWeight: '500' }}>{item.name}</td>
                                             {activeTab === 'campuses' && <td>{item.location}</td>}
                                             {activeTab === 'positions' && <td>{item.departments?.name || <span style={{ color: '#94a3b8' }}>- Sin Asignar -</span>}</td>}
+                                            {activeTab === 'leave_types' && <td>{item.consumes_vacation ? <span className="badge badge-danger">Sí (Descuenta)</span> : <span className="badge badge-success">No (No descuenta)</span>}</td>}
                                             <td>
                                                 <div className="action-buttons">
                                                     <button className="btn-icon" title="Editar" onClick={() => openModal(item)}>
@@ -261,7 +274,7 @@ export default function Catalogs() {
                 <div className="modal-overlay">
                     <div className="modal-content" style={{ maxWidth: '450px' }}>
                         <div className="modal-header">
-                            <h2>{editingItem ? 'Editar' : 'Nuevo'} {activeTab === 'departments' ? 'Departamento' : activeTab === 'positions' ? 'Puesto' : 'Sede'}</h2>
+                            <h2>{editingItem ? 'Editar' : 'Nuevo'} {activeTab === 'departments' ? 'Departamento' : activeTab === 'positions' ? 'Puesto' : activeTab === 'leave_types' ? 'Tipo de Permiso' : 'Sede'}</h2>
                             <button className="modal-close" onClick={closeModal}>&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="modal-body">
@@ -305,6 +318,21 @@ export default function Catalogs() {
                                             <option key={d.id} value={d.id}>{d.name}</option>
                                         ))}
                                     </select>
+                                </div>
+                            )}
+
+                            {activeTab === 'leave_types' && (
+                                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
+                                    <input
+                                        type="checkbox"
+                                        id="consumes_vacation"
+                                        checked={formData.consumes_vacation}
+                                        onChange={(e) => setFormData({ ...formData, consumes_vacation: e.target.checked })}
+                                        style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+                                    />
+                                    <label htmlFor="consumes_vacation" style={{ cursor: 'pointer', margin: 0, fontWeight: 500, color: 'var(--text-primary)' }}>
+                                        Este tipo de permiso/ausencia descuenta días del saldo de vacaciones
+                                    </label>
                                 </div>
                             )}
 

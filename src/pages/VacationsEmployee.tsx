@@ -11,7 +11,8 @@ export default function VacationsEmployee() {
 
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [leaveType, setLeaveType] = useState('Vacaciones');
+    const [leaveType, setLeaveType] = useState('');
+    const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -21,10 +22,13 @@ export default function VacationsEmployee() {
     }, [user]);
 
     useEffect(() => {
-        if (employeeData && employeeData.vacation_days_available === 0) {
-            setLeaveType('Permiso sin Goce de Salario');
+        if (employeeData && employeeData.vacation_days_available === 0 && leaveTypes.length > 0) {
+            const noVacationFirst = leaveTypes.find(lt => !lt.consumes_vacation);
+            if (noVacationFirst) {
+                setLeaveType(noVacationFirst.name);
+            }
         }
-    }, [employeeData]);
+    }, [employeeData, leaveTypes]);
 
     const fetchData = async () => {
         try {
@@ -48,6 +52,17 @@ export default function VacationsEmployee() {
             if (reqError) throw reqError;
             setRequests(reqData || []);
 
+            // Get leave types
+            const { data: ltData, error: ltError } = await supabase
+                .from('leave_types')
+                .select('*')
+                .order('name');
+            if (ltError) throw ltError;
+            setLeaveTypes(ltData || []);
+
+            if (ltData && ltData.length > 0 && !leaveType) {
+                setLeaveType(ltData[0].name);
+            }
         } catch (error) {
             console.error(error);
         }
@@ -70,10 +85,11 @@ export default function VacationsEmployee() {
             return toast.error('Rango de fechas inválido');
         }
 
-        const consumesDays = ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(leaveType);
+        const selectedLt = leaveTypes.find(lt => lt.name === leaveType);
+        const consumesDays = selectedLt ? selectedLt.consumes_vacation : ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(leaveType);
 
-        if (consumesDays && requestedDays > employeeData?.vacation_days_available) {
-            return toast.error(`Estás superando la cantidad de días disponibles (${employeeData?.vacation_days_available} días). Solicita tu saldo restante, y para más días usa "Permiso sin Goce de Salario".`, { duration: 6000 });
+        if (consumesDays && requestedDays > (employeeData?.vacation_days_available || 0)) {
+            return toast.error(`Estás superando la cantidad de días disponibles (${employeeData?.vacation_days_available} días). Solicita tu saldo restante, y para más días usa un tipo de permiso diferente como "Permiso sin Goce de Salario".`, { duration: 6000 });
         }
 
         setSubmitting(true);
@@ -118,7 +134,10 @@ export default function VacationsEmployee() {
                     <div className="card balance-card">
                         <h3 className="card-title">Saldo Disponible</h3>
                         {(() => {
-                            const usedDays = requests.filter(r => r.status === 'APROBADO' && (!r.leave_type || ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(r.leave_type))).reduce((sum, r) => sum + Number(r.days_requested), 0) || 0;
+                            const usedDays = requests.filter(r => r.status === 'APROBADO' && (() => {
+                                const ltData = leaveTypes.find(lt => lt.name === r.leave_type);
+                                return ltData ? ltData.consumes_vacation : (!r.leave_type || ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(r.leave_type));
+                            })()).reduce((sum, r) => sum + Number(r.days_requested), 0) || 0;
                             const currentBalance = employeeData?.vacation_days_available || 0;
                             const initialBalance = currentBalance + usedDays;
 
@@ -148,27 +167,24 @@ export default function VacationsEmployee() {
                         <h3 className="card-title">Nueva Solicitud</h3>
                         <form onSubmit={handleRequest} className="mt-4">
                             <div className="form-group">
-                                <label className="form-label">Tipo de Permiso</label>
-                                <select
-                                    className="form-select"
-                                    required
-                                    value={leaveType}
-                                    onChange={(e) => setLeaveType(e.target.value)}
-                                >
-                                    {(employeeData?.vacation_days_available || 0) > 0 ? (
-                                        <>
-                                            <option value="Vacaciones">Vacaciones</option>
-                                            <option value="Día de Cumpleaños">Día de Cumpleaños</option>
-                                            <option value="Cambio por Horas Acumuladas">Cambio por Horas Acumuladas</option>
-                                            <option value="Permiso Médico">Permiso Médico</option>
-                                            <option value="Licencia por Maternidad/Paternidad">Licencia por Maternidad/Paternidad</option>
-                                            <option value="Ausencia Injustificada">Ausencia Injustificada</option>
-                                            <option value="Permiso sin Goce de Salario">Permiso sin Goce de Salario</option>
-                                        </>
-                                    ) : (
-                                        <option value="Permiso sin Goce de Salario">Permiso sin Goce de Salario</option>
-                                    )}
-                                </select>
+                                <div>
+                                    <label className="form-label">Tipo de Permiso</label>
+                                    <select
+                                        className="form-select"
+                                        required
+                                        value={leaveType}
+                                        onChange={(e) => setLeaveType(e.target.value)}
+                                    >
+                                        {leaveTypes.map(lt => {
+                                            const disabled = lt.consumes_vacation && (employeeData?.vacation_days_available || 0) <= 0;
+                                            return (
+                                                <option key={lt.id} value={lt.name} disabled={disabled}>
+                                                    {lt.name} {lt.consumes_vacation ? '(Descuenta Vacaciones)' : ''}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="form-group">

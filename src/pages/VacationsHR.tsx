@@ -11,6 +11,7 @@ export default function VacationsHR() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'solicitudes' | 'manual'>('solicitudes');
     const [searchEmp, setSearchEmp] = useState('');
+    const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
 
     const [manualForm, setManualForm] = useState({
         employee_id: '',
@@ -45,6 +46,20 @@ export default function VacationsHR() {
             old_leave_type: req.leave_type || 'Vacaciones'
         });
     };
+
+    useEffect(() => {
+        const fetchLeaveTypes = async () => {
+            const { data } = await supabase.from('leave_types').select('*').order('name');
+            if (data) setLeaveTypes(data);
+
+            // Si hay tipos configurados, usar el primero como defecto
+            if (data && data.length > 0) {
+                setManualForm(prev => ({ ...prev, leave_type: data[0].name }));
+                setEditModal(prev => ({ ...prev, leave_type: data[0].name }));
+            }
+        };
+        fetchLeaveTypes();
+    }, []);
 
     useEffect(() => {
         if (activeTab === 'solicitudes') {
@@ -157,26 +172,32 @@ export default function VacationsHR() {
 
             if (error) throw error;
 
-            if (isBecomingApproved && (!request.leave_type || ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(request.leave_type))) {
-                const currentBalance = request.employees.vacation_days_available;
-                const newBalance = currentBalance - request.days_requested;
+            if (isBecomingApproved) {
+                const requestLeaveType = request.leave_type || 'Vacaciones';
+                const lt = leaveTypes.find(l => l.name === requestLeaveType);
+                const consumesDays = lt ? lt.consumes_vacation : ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(requestLeaveType);
 
-                const { error: empError } = await supabase
-                    .from('employees')
-                    .update({ vacation_days_available: newBalance })
-                    .eq('id', request.employee_id);
+                if (consumesDays) {
+                    const currentBalance = request.employees.vacation_days_available;
+                    const newBalance = currentBalance - request.days_requested;
 
-                if (!empError) {
-                    const { data: userData } = await supabase.auth.getUser();
-                    if (userData.user) {
-                        await supabase.from('vacation_balance_logs').insert([{
-                            employee_id: request.employee_id,
-                            admin_id: userData.user.id,
-                            previous_balance: currentBalance,
-                            adjustment: -request.days_requested,
-                            new_balance: newBalance,
-                            justification: `Aprobación de Solicitud #${id.substring(0, 8)}`
-                        }]);
+                    const { error: empError } = await supabase
+                        .from('employees')
+                        .update({ vacation_days_available: newBalance })
+                        .eq('id', request.employee_id);
+
+                    if (!empError) {
+                        const { data: userData } = await supabase.auth.getUser();
+                        if (userData.user) {
+                            await supabase.from('vacation_balance_logs').insert([{
+                                employee_id: request.employee_id,
+                                admin_id: userData.user.id,
+                                previous_balance: currentBalance,
+                                adjustment: -request.days_requested,
+                                new_balance: newBalance,
+                                justification: `Aprobación de Solicitud #${id.substring(0, 8)}`
+                            }]);
+                        }
                     }
                 }
             }
@@ -491,7 +512,10 @@ export default function VacationsHR() {
                             if (error) throw error;
 
                             // Si es vacaciones y se restan de los dias.
-                            if (['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(manualForm.leave_type)) {
+                            const lt = leaveTypes.find(l => l.name === manualForm.leave_type);
+                            const consumesDays = lt ? lt.consumes_vacation : ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(manualForm.leave_type);
+
+                            if (consumesDays) {
                                 const hrEmployee = employees.find(e => e.id === manualForm.employee_id);
                                 if (hrEmployee) {
                                     const requestedDays = parseFloat(manualForm.days_requested);
@@ -567,13 +591,9 @@ export default function VacationsHR() {
                                 value={manualForm.leave_type}
                                 onChange={(e) => setManualForm({ ...manualForm, leave_type: e.target.value })}
                             >
-                                <option value="Vacaciones">Vacaciones</option>
-                                <option value="Día de Cumpleaños">Día de Cumpleaños</option>
-                                <option value="Cambio por Horas Acumuladas">Cambio por Horas Acumuladas</option>
-                                <option value="Permiso Médico">Permiso Médico</option>
-                                <option value="Licencia por Maternidad/Paternidad">Licencia por Maternidad/Paternidad</option>
-                                <option value="Ausencia Injustificada">Ausencia Injustificada</option>
-                                <option value="Permiso sin Goce de Salario">Permiso sin Goce de Salario</option>
+                                {leaveTypes.map(lt => (
+                                    <option key={lt.id} value={lt.name}>{lt.name} {lt.consumes_vacation ? '(Descuenta Vacaciones)' : ''}</option>
+                                ))}
                             </select>
                         </div>
 
@@ -649,7 +669,10 @@ export default function VacationsHR() {
                                 if (error) throw error;
 
                                 const diffDays = newDays - editModal.old_days_requested;
-                                const consumesDays = (type: string) => ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(type || 'Vacaciones');
+                                const consumesDays = (type: string) => {
+                                    const lt = leaveTypes.find(l => l.name === type);
+                                    return lt ? lt.consumes_vacation : ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(type || 'Vacaciones');
+                                };
                                 const isNewVacation = consumesDays(editModal.leave_type);
                                 const wasVacation = consumesDays(editModal.old_leave_type);
 
@@ -706,13 +729,9 @@ export default function VacationsHR() {
                                         value={editModal.leave_type}
                                         onChange={(e) => setEditModal({ ...editModal, leave_type: e.target.value })}
                                     >
-                                        <option value="Vacaciones">Vacaciones</option>
-                                        <option value="Día de Cumpleaños">Día de Cumpleaños</option>
-                                        <option value="Cambio por Horas Acumuladas">Cambio por Horas Acumuladas</option>
-                                        <option value="Permiso Médico">Permiso Médico</option>
-                                        <option value="Licencia por Maternidad/Paternidad">Licencia por Maternidad/Paternidad</option>
-                                        <option value="Ausencia Injustificada">Ausencia Injustificada</option>
-                                        <option value="Permiso sin Goce de Salario">Permiso sin Goce de Salario</option>
+                                        {leaveTypes.map(lt => (
+                                            <option key={lt.id} value={lt.name}>{lt.name} {lt.consumes_vacation ? '(Descuenta Vacaciones)' : ''}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="form-group">
@@ -760,7 +779,10 @@ export default function VacationsHR() {
                                         const { error } = await supabase.from('vacation_requests').update({ status: 'RECHAZADO', rejection_reason: reason.trim() }).eq('id', editModal.requestId);
                                         if (error) throw error;
 
-                                        const consumesDays = (type: string) => ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(type || 'Vacaciones');
+                                        const consumesDays = (type: string) => {
+                                            const lt = leaveTypes.find(l => l.name === type);
+                                            return lt ? lt.consumes_vacation : ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(type || 'Vacaciones');
+                                        };
                                         if (consumesDays(editModal.old_leave_type)) {
                                             const hrEmployee = employees.find(e => e.id === editModal.employee_id);
                                             if (hrEmployee) {
