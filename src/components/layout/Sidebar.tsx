@@ -10,7 +10,8 @@ import {
     Gift,
     Palette,
     Building2,
-    FileText
+    FileText,
+    Shield
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 
@@ -111,6 +112,13 @@ function Sidebar({ role, onSignOut, employeeName, employeePhoto }: SidebarProps)
                     <NavLink to="/catalogos" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                         <Settings size={20} />
                         <span>Catálogos</span>
+                    </NavLink>
+                )}
+
+                {role === 'ADMIN_TI' && (
+                    <NavLink to="/administradores" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <Shield size={20} />
+                        <span>Admin. Sistema</span>
                     </NavLink>
                 )}
 

@@ -12,6 +12,7 @@ import VacationBalances from './pages/VacationBalances';
 import Birthdays from './pages/Birthdays';
 import SiteEditor from './pages/SiteEditor';
 import CampusDirectorsAdmin from './pages/CampusDirectorsAdmin';
+import SiteAdmins from './pages/SiteAdmins';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
@@ -100,6 +101,12 @@ function MainRoutes() {
         <Route path="editor-sitio" element={
           <ProtectedRoute allowedRoles={['ADMIN_TI']}>
             <SiteEditor />
+          </ProtectedRoute>
+        } />
+
+        <Route path="administradores" element={
+          <ProtectedRoute allowedRoles={['ADMIN_TI']}>
+            <SiteAdmins />
           </ProtectedRoute>
         } />
       </Route>
