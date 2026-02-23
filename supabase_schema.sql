@@ -109,11 +109,11 @@ CREATE POLICY "Campuses manageable by Admin" ON campuses FOR ALL USING (user_has
 
 -- Empleados
 CREATE POLICY "Employees viewable by themselves, HR and Admin" ON employees FOR SELECT
-    USING (auth.uid() = id OR user_has_role('RRHH') OR user_has_role('ADMIN_TI') OR user_has_role('GERENCIA'));
+    USING (auth.uid() = id OR user_has_role('RRHH') OR user_has_role('ADMIN_TI') OR user_has_role('GERENCIA') OR user_has_role('DIRECTOR_SEDE'));
 CREATE POLICY "Employees insertable by Admin and HR" ON employees FOR INSERT
     WITH CHECK (user_has_role('RRHH') OR user_has_role('ADMIN_TI'));
 CREATE POLICY "Employees updatable" ON employees FOR UPDATE
-    USING (auth.uid() = id OR user_has_role('RRHH') OR user_has_role('ADMIN_TI') OR user_has_role('GERENCIA'));
+    USING (auth.uid() = id OR user_has_role('RRHH') OR user_has_role('ADMIN_TI') OR user_has_role('GERENCIA') OR user_has_role('DIRECTOR_SEDE'));
 
 -- User roles
 CREATE POLICY "User roles viewable" ON user_roles FOR SELECT
@@ -123,11 +123,11 @@ CREATE POLICY "User roles manageable" ON user_roles FOR ALL
 
 -- Solicitudes de vacaciones
 CREATE POLICY "Vacations viewable" ON vacation_requests FOR SELECT
-    USING (auth.uid() = employee_id OR user_has_role('RRHH') OR user_has_role('GERENCIA') OR user_has_role('ADMIN_TI'));
+    USING (auth.uid() = employee_id OR user_has_role('RRHH') OR user_has_role('GERENCIA') OR user_has_role('ADMIN_TI') OR user_has_role('DIRECTOR_SEDE'));
 CREATE POLICY "Vacations insertable" ON vacation_requests FOR INSERT
     WITH CHECK (auth.uid() = employee_id);
 CREATE POLICY "Vacations updatable" ON vacation_requests FOR UPDATE
-    USING (user_has_role('RRHH') OR user_has_role('GERENCIA') OR auth.uid() = employee_id);
+    USING (user_has_role('RRHH') OR user_has_role('GERENCIA') OR auth.uid() = employee_id OR user_has_role('ADMIN_TI') OR user_has_role('DIRECTOR_SEDE'));
 
 -- Trigger para descontar vacaciones aprobadas
 CREATE OR REPLACE FUNCTION handle_vacation_update()

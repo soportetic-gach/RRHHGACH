@@ -21,8 +21,10 @@ export default function VacationBalances() {
     });
 
     useEffect(() => {
-        fetchEmployees();
-    }, []);
+        if (role) {
+            fetchEmployees();
+        }
+    }, [role, user]);
 
     const fetchEmployees = async () => {
         try {
