@@ -68,7 +68,7 @@ function Sidebar({ role, onSignOut }: SidebarProps) {
                     </NavLink>
                 )}
 
-                {role === 'EMPLEADO' && (
+                {['EMPLEADO', 'DIRECTOR_SEDE'].includes(role || '') && (
                     <>
                         <NavLink to="/mis-vacaciones" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                             <Calendar size={20} />

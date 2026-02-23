@@ -80,7 +80,7 @@ function MainRoutes() {
         } />
 
         <Route path="mis-vacaciones" element={
-          <ProtectedRoute allowedRoles={['EMPLEADO']}>
+          <ProtectedRoute allowedRoles={['EMPLEADO', 'DIRECTOR_SEDE']}>
             <VacationsEmployee />
           </ProtectedRoute>
         } />

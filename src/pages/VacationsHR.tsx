@@ -101,7 +101,13 @@ export default function VacationsHR() {
                 const { data: directorData } = await supabase.from('campus_directors').select('campus_id').eq('employee_id', user?.id);
                 const campusIds = directorData?.map(d => d.campus_id) || [];
                 if (campusIds.length > 0) {
-                    query = query.in('employees.campus_id', campusIds);
+                    const { data: empsInCampus } = await supabase.from('employees').select('id').in('campus_id', campusIds);
+                    const empIds = empsInCampus?.map(e => e.id) || [];
+                    if (empIds.length > 0) {
+                        query = query.in('employee_id', empIds);
+                    } else {
+                        query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                    }
                 } else {
                     query = query.eq('id', '00000000-0000-0000-0000-000000000000');
                 }
