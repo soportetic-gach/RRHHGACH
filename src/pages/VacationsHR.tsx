@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Check, X, Search, Calendar as CalendarIcon, UserPlus, FileText, Pencil } from 'lucide-react';
+import { Check, X, Search, Calendar as CalendarIcon, UserPlus, FileText, Pencil, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
@@ -206,6 +206,109 @@ export default function VacationsHR() {
         }
     };
 
+    const handlePrint = (req: any) => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            toast.error('Por favor permita las ventanas emergentes (pop-ups) para imprimir.');
+            return;
+        }
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Reporte de Aprobación - ${req.employees?.first_name} ${req.employees?.last_name}</title>
+                    <style>
+                        body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px; color: #334155; line-height: 1.5; }
+                        .header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
+                        .title { font-size: 24px; font-weight: bold; color: #0f172a; margin-bottom: 5px; }
+                        .subtitle { font-size: 14px; color: #64748b; }
+                        .detail-row { margin-bottom: 15px; font-size: 14px; display: flex; align-items: flex-start; }
+                        .label { font-weight: 600; width: 180px; flex-shrink: 0; color: #475569; }
+                        .value { flex-grow: 1; font-weight: 500; color: #0f172a; }
+                        .footer { margin-top: 50px; font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+                        .status { display: inline-block; padding: 4px 12px; border-radius: 999px; background: #dcfce7; color: #166534; font-weight: bold; font-size: 12px; }
+                        .signature-box { margin-top: 60px; display: flex; justify-content: space-around; }
+                        .signature-line { width: 200px; border-top: 1px solid #94a3b8; text-align: center; padding-top: 8px; font-size: 12px; color: #475569; }
+                        @media print {
+                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="title">Comprobante Oficial de Permiso</div>
+                        <div class="subtitle">Sistema de Recursos Humanos GACH</div>
+                    </div>
+                    
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                        <div class="detail-row">
+                            <span class="label">Funcionario:</span> 
+                            <span class="value">${req.employees?.first_name} ${req.employees?.last_name} (ID: ${req.employees?.identification})</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Departamento / Sede:</span> 
+                            <span class="value">${req.employees?.departments?.name || 'N/A'} - ${req.employees?.campuses?.name || 'N/A'}</span>
+                        </div>
+                    </div>
+
+                    <div style="padding: 0 20px;">
+                        <div class="detail-row">
+                            <span class="label">Tipo de Permiso:</span> 
+                            <span class="value">${req.leave_type || 'Vacaciones'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Fechas Autorizadas:</span> 
+                            <span class="value">${new Date(req.start_date).toLocaleDateString()} al ${new Date(req.end_date).toLocaleDateString()}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Días Hábiles:</span> 
+                            <span class="value">${req.days_requested} Días</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Estado Actual:</span> 
+                            <span class="value"><span class="status">${req.status}</span></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Entes Aprobadores:</span> 
+                            <span class="value">
+                                ${req.status === 'APROBADO' ? `
+                                    <ul style="margin: 0; padding-left: 20px;">
+                                        ${req.hr_approved ? '<li>Aprobado por Recursos Humanos</li>' : ''}
+                                        ${req.management_approved ? '<li>Aprobado por Gerencia / Director Sede</li>' : ''}
+                                        ${(!req.hr_approved && !req.management_approved) ? '<li>Aprobación Manual / Directa</li>' : ''}
+                                    </ul>
+                                ` : 'Pendiente o Rechazado'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="signature-box">
+                        <div class="signature-line">Firma del Colaborador</div>
+                        <div class="signature-line">Sello o Firma Autorizada</div>
+                    </div>
+
+                    <div class="footer">
+                        Documento generado automáticamente por el Sistema HR el ${new Date().toLocaleString()}.<br/>
+                        Identificador de Solicitud: #${req.id}
+                    </div>
+                    
+                    <script>
+                        window.onload = function() { 
+                            setTimeout(function() {
+                                window.print();
+                                // window.close(); // Optional: close immediately after
+                            }, 500); 
+                        }
+                    </script>
+                </body>
+            </html>
+        `;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'APROBADO': return <span className="badge badge-success">Aprobado</span>;
@@ -338,6 +441,16 @@ export default function VacationsHR() {
                                                             style={{ color: 'var(--primary-color)' }}
                                                         >
                                                             <Pencil size={18} />
+                                                        </button>
+                                                    )}
+                                                    {req.status === 'APROBADO' && (
+                                                        <button
+                                                            className="btn-icon"
+                                                            title="Imprimir Comprobante"
+                                                            onClick={() => handlePrint(req)}
+                                                            style={{ color: '#4b5563' }}
+                                                        >
+                                                            <Printer size={18} />
                                                         </button>
                                                     )}
                                                 </div>
