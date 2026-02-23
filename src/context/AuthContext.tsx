@@ -62,13 +62,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             name
           )
         `)
-                .eq('user_id', userId)
-                .single();
+                .eq('user_id', userId);
 
-            if (!error && data && data.roles) {
-                // Handle array or single object depending on how Supabase returns joined data
-                const roleData = Array.isArray(data.roles) ? data.roles[0] : data.roles;
-                setRole(roleData?.name || null);
+            if (!error && data && data.length > 0) {
+                const fetchedRoles = data.map((r: any) => Array.isArray(r.roles) ? r.roles[0]?.name : r.roles?.name).filter(Boolean);
+
+                const rolePriority = ['ADMIN_TI', 'RRHH', 'GERENCIA', 'DIRECTOR_SEDE', 'EMPLEADO'];
+                let selectedRole = fetchedRoles[0];
+
+                for (const rp of rolePriority) {
+                    if (fetchedRoles.includes(rp)) {
+                        selectedRole = rp;
+                        break;
+                    }
+                }
+
+                setRole(selectedRole || null);
             }
         } catch (err) {
             console.error('Error fetching role', err);
