@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
 export default function VacationBalances() {
-    const { user } = useAuth();
+    const { user, role } = useAuth();
     const [employees, setEmployees] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -27,7 +27,7 @@ export default function VacationBalances() {
     const fetchEmployees = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
+            let query = supabase
                 .from('employees')
                 .select(`
                     id, 
@@ -35,13 +35,26 @@ export default function VacationBalances() {
                     last_name, 
                     identification, 
                     vacation_days_available,
+                    campus_id,
                     departments (name),
                     campuses (name),
                     photo_url,
                     vacation_requests(days_requested, status, leave_type)
                 `)
-                .eq('employee_status', 'ACTIVO')
-                .order('first_name');
+                .eq('employee_status', 'ACTIVO');
+
+            if (role === 'DIRECTOR_SEDE') {
+                const { data: directorData } = await supabase.from('campus_directors').select('campus_id').eq('employee_id', user?.id);
+                const campusIds = directorData?.map(d => d.campus_id) || [];
+                if (campusIds.length > 0) {
+                    query = query.in('campus_id', campusIds);
+                } else {
+                    // Si no tiene sedes asignadas, no mostramos nada
+                    query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                }
+            }
+
+            const { data, error } = await query.order('first_name');
 
             if (error) throw error;
             setEmployees(data || []);

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
 export default function VacationsHR() {
-    const { role } = useAuth();
+    const { user, role } = useAuth();
     const [requests, setRequests] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -56,11 +56,22 @@ export default function VacationsHR() {
 
     const fetchEmployees = async () => {
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('employees')
-                .select('id, first_name, last_name, identification, vacation_days_available')
-                .eq('employee_status', 'ACTIVO')
-                .order('first_name');
+                .select('id, first_name, last_name, identification, vacation_days_available, campus_id')
+                .eq('employee_status', 'ACTIVO');
+
+            if (role === 'DIRECTOR_SEDE') {
+                const { data: directorData } = await supabase.from('campus_directors').select('campus_id').eq('employee_id', user?.id);
+                const campusIds = directorData?.map(d => d.campus_id) || [];
+                if (campusIds.length > 0) {
+                    query = query.in('campus_id', campusIds);
+                } else {
+                    query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                }
+            }
+
+            const { data, error } = await query.order('first_name');
             if (error) throw error;
             setEmployees(data || []);
         } catch (error) {
@@ -71,20 +82,32 @@ export default function VacationsHR() {
     const fetchRequests = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
+            let query = supabase
                 .from('vacation_requests')
                 .select(`
           *,
-          employees (
+          employees!inner (
             first_name,
             last_name,
             identification,
             vacation_days_available,
+            campus_id,
             departments (name),
             campuses (name)
           )
-        `)
-                .order('created_at', { ascending: false });
+        `);
+
+            if (role === 'DIRECTOR_SEDE') {
+                const { data: directorData } = await supabase.from('campus_directors').select('campus_id').eq('employee_id', user?.id);
+                const campusIds = directorData?.map(d => d.campus_id) || [];
+                if (campusIds.length > 0) {
+                    query = query.in('employees.campus_id', campusIds);
+                } else {
+                    query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                }
+            }
+
+            const { data, error } = await query.order('created_at', { ascending: false });
 
             if (error) throw error;
             setRequests(data || []);
@@ -113,7 +136,7 @@ export default function VacationsHR() {
                 }
             }
 
-            if (role === 'GERENCIA' || role === 'ADMIN_TI') {
+            if (role === 'GERENCIA' || role === 'ADMIN_TI' || role === 'DIRECTOR_SEDE') {
                 updatePayload.management_approved = true;
                 if (hrApproved || role === 'ADMIN_TI') {
                     updatePayload.status = 'APROBADO';

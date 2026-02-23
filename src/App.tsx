@@ -11,6 +11,7 @@ import Catalogs from './pages/Catalogs';
 import VacationBalances from './pages/VacationBalances';
 import Birthdays from './pages/Birthdays';
 import SiteEditor from './pages/SiteEditor';
+import CampusDirectorsAdmin from './pages/CampusDirectorsAdmin';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
@@ -36,7 +37,7 @@ function MainRoutes() {
 
   const getInitialRoute = () => {
     if (role === 'ADMIN_TI') return '/dashboard';
-    if (role === 'RRHH' || role === 'GERENCIA') return '/vacaciones';
+    if (role === 'RRHH' || role === 'GERENCIA' || role === 'DIRECTOR_SEDE') return '/vacaciones';
     if (role === 'EMPLEADO') return '/mis-vacaciones';
     return '/dashboard'; // fallback
   };
@@ -66,8 +67,14 @@ function MainRoutes() {
           </ProtectedRoute>
         } />
 
+        <Route path="directores-sede" element={
+          <ProtectedRoute allowedRoles={['ADMIN_TI', 'RRHH']}>
+            <CampusDirectorsAdmin />
+          </ProtectedRoute>
+        } />
+
         <Route path="vacaciones" element={
-          <ProtectedRoute allowedRoles={['ADMIN_TI', 'RRHH', 'GERENCIA']}>
+          <ProtectedRoute allowedRoles={['ADMIN_TI', 'RRHH', 'GERENCIA', 'DIRECTOR_SEDE']}>
             <VacationsHR />
           </ProtectedRoute>
         } />
@@ -79,7 +86,7 @@ function MainRoutes() {
         } />
 
         <Route path="saldos" element={
-          <ProtectedRoute allowedRoles={['ADMIN_TI', 'RRHH']}>
+          <ProtectedRoute allowedRoles={['ADMIN_TI', 'RRHH', 'DIRECTOR_SEDE']}>
             <VacationBalances />
           </ProtectedRoute>
         } />

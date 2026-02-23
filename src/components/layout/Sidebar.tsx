@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard,
     Users,
+    UserCog,
     Calendar,
     Settings,
     LogOut,
@@ -50,6 +51,13 @@ function Sidebar({ role, onSignOut }: SidebarProps) {
                     <NavLink to="/cumpleanos" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                         <Gift size={20} />
                         <span>Cumpleaños</span>
+                    </NavLink>
+                )}
+
+                {['ADMIN_TI', 'RRHH'].includes(role || '') && (
+                    <NavLink to="/directores-sede" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <UserCog size={20} />
+                        <span>Directores de Sede</span>
                     </NavLink>
                 )}
 
