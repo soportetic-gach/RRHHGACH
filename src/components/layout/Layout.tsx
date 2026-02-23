@@ -1,11 +1,29 @@
 import { Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { supabase } from '../../lib/supabase';
 
 function Layout() {
   const { user, role, signOut } = useAuth();
   const { settings } = useSettings();
+  const [employeeName, setEmployeeName] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      supabase
+        .from('employees')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setEmployeeName(`${data.first_name} ${data.last_name}`);
+          }
+        });
+    }
+  }, [user]);
 
   return (
     <div className="layout-container">
@@ -13,8 +31,13 @@ function Layout() {
 
       <div className="main-content">
         <header className="top-header">
-          <div className="header-breadcrumbs">
+          <div className="header-breadcrumbs" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <h2>{settings.company_name}</h2>
+            {employeeName && (
+              <span style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 500, borderLeft: '2px solid var(--border-color)', paddingLeft: '1rem' }}>
+                Bienvenido(a), {employeeName}
+              </span>
+            )}
           </div>
           <div className="header-user-info">
             <div className="user-details">
