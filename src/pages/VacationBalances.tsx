@@ -133,8 +133,12 @@ export default function VacationBalances() {
         <div className="page-container">
             <div className="page-header">
                 <div>
-                    <h1>Saldos y Ajustes</h1>
-                    <p>Gestiona los días disponibles de vacaciones y licencias para el personal</p>
+                    <h1>{role === 'DIRECTOR_SEDE' ? 'Reportes de Vacaciones' : 'Saldos y Ajustes'}</h1>
+                    <p>
+                        {role === 'DIRECTOR_SEDE'
+                            ? 'Consulta los saldos y días disponibles de los empleados de tu sede'
+                            : 'Gestiona los días disponibles de vacaciones y licencias para el personal'}
+                    </p>
                 </div>
             </div>
 
@@ -164,7 +168,7 @@ export default function VacationBalances() {
                                     <th>Saldo Inicial</th>
                                     <th>Días Utilizados</th>
                                     <th>Saldo Disponible</th>
-                                    <th>Acciones</th>
+                                    {role !== 'DIRECTOR_SEDE' && <th>Acciones</th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -214,18 +218,20 @@ export default function VacationBalances() {
                                                     </>
                                                 );
                                             })()}
-                                            <td>
-                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                    <button
-                                                        className="btn-icon"
-                                                        title="Ajustar Saldo Manualmente"
-                                                        onClick={() => openAdjustmentModal(emp)}
-                                                        style={{ padding: '0.375rem', background: '#f1f5f9', borderRadius: 'var(--radius-sm)', color: 'var(--primary-color)', border: 'none', cursor: 'pointer' }}
-                                                    >
-                                                        <Calculator size={18} />
-                                                    </button>
-                                                </div>
-                                            </td>
+                                            {role !== 'DIRECTOR_SEDE' && (
+                                                <td>
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <button
+                                                            className="btn-icon"
+                                                            title="Ajustar Saldo Manualmente"
+                                                            onClick={() => openAdjustmentModal(emp)}
+                                                            style={{ padding: '0.375rem', background: '#f1f5f9', borderRadius: 'var(--radius-sm)', color: 'var(--primary-color)', border: 'none', cursor: 'pointer' }}
+                                                        >
+                                                            <Calculator size={18} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))
                                 ) : (

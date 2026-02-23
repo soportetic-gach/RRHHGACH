@@ -9,7 +9,8 @@ import {
     Wallet,
     Gift,
     Palette,
-    Building2
+    Building2,
+    FileText
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 
@@ -81,6 +82,13 @@ function Sidebar({ role, onSignOut }: SidebarProps) {
                     <NavLink to="/saldos" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                         <Wallet size={20} />
                         <span>Saldos y Vacaciones</span>
+                    </NavLink>
+                )}
+
+                {role === 'DIRECTOR_SEDE' && (
+                    <NavLink to="/saldos" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <FileText size={20} />
+                        <span>Reportes de Vacaciones</span>
                     </NavLink>
                 )}
 
