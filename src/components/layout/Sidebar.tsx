@@ -11,7 +11,8 @@ import {
     Palette,
     Building2,
     FileText,
-    Shield
+    Shield,
+    FileSpreadsheet
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 
@@ -108,11 +109,40 @@ function Sidebar({ role, onSignOut, employeeName, employeePhoto }: SidebarProps)
                     </NavLink>
                 )}
 
+                {['ADMIN_TI', 'RRHH'].includes(role || '') && (
+                    <div className="sidebar-divider" style={{
+                        margin: '1rem 1rem 0.5rem',
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        color: 'rgba(255,255,255,0.4)',
+                        letterSpacing: '0.05em',
+                        fontWeight: 600
+                    }}>Reportes</div>
+                )}
+
+                {['ADMIN_TI', 'RRHH'].includes(role || '') && (
+                    <NavLink to="/reportes" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <FileSpreadsheet size={20} />
+                        <span>Reporte General</span>
+                    </NavLink>
+                )}
+
                 {role === 'ADMIN_TI' && (
                     <NavLink to="/catalogos" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                         <Settings size={20} />
                         <span>Catálogos</span>
                     </NavLink>
+                )}
+
+                {role === 'ADMIN_TI' && (
+                    <div className="sidebar-divider" style={{
+                        margin: '1rem 1rem 0.5rem',
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        color: 'rgba(255,255,255,0.4)',
+                        letterSpacing: '0.05em',
+                        fontWeight: 600
+                    }}>Sistema</div>
                 )}
 
                 {role === 'ADMIN_TI' && (

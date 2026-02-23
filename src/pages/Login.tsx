@@ -49,6 +49,12 @@ export default function Login() {
 
   return (
     <div className="login-container">
+      {settings.login_logo_url && (
+        <div
+          className="login-background"
+          style={{ backgroundImage: `url(${settings.login_logo_url})` }}
+        />
+      )}
       <div className="login-card">
         <div className="login-header">
           <div className="logo-circle" style={{ background: settings.login_logo_url ? 'transparent' : 'var(--info-bg)' }}>
@@ -107,9 +113,28 @@ export default function Login() {
           justify-content: center;
           background: linear-gradient(135deg, var(--bg-color) 0%, #cbd5e1 100%);
           padding: 1rem;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .login-background {
+          position: absolute;
+          top: -10%;
+          left: -10%;
+          width: 120%;
+          height: 120%;
+          background-size: contain;
+          background-position: center;
+          background-repeat: no-repeat;
+          opacity: 0.08;
+          filter: blur(12px);
+          z-index: 0;
+          pointer-events: none;
         }
 
         .login-card {
+          position: relative;
+          z-index: 1;
           width: 100%;
           max-width: 420px;
           background: var(--surface-color);
