@@ -10,6 +10,7 @@ import VacationsEmployee from './pages/VacationsEmployee';
 import Catalogs from './pages/Catalogs';
 import VacationBalances from './pages/VacationBalances';
 import Birthdays from './pages/Birthdays';
+import SiteEditor from './pages/SiteEditor';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
@@ -86,6 +87,12 @@ function MainRoutes() {
         <Route path="catalogos" element={
           <ProtectedRoute allowedRoles={['ADMIN_TI']}>
             <Catalogs />
+          </ProtectedRoute>
+        } />
+
+        <Route path="editor-sitio" element={
+          <ProtectedRoute allowedRoles={['ADMIN_TI']}>
+            <SiteEditor />
           </ProtectedRoute>
         } />
       </Route>

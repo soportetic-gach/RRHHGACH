@@ -1,33 +1,35 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 
 function Layout() {
-    const { user, role, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
+  const { settings } = useSettings();
 
-    return (
-        <div className="layout-container">
-            <Sidebar role={role} onSignOut={signOut} />
+  return (
+    <div className="layout-container">
+      <Sidebar role={role} onSignOut={signOut} />
 
-            <div className="main-content">
-                <header className="top-header">
-                    <div className="header-breadcrumbs">
-                        <h2>Sistema HR Enterprise</h2>
-                    </div>
-                    <div className="header-user-info">
-                        <div className="user-details">
-                            <span className="user-email">{user?.email}</span>
-                            <span className={`badge badge-${role === 'ADMIN_TI' ? 'danger' : 'info'}`}>{role}</span>
-                        </div>
-                    </div>
-                </header>
-
-                <main className="page-content">
-                    <Outlet />
-                </main>
+      <div className="main-content">
+        <header className="top-header">
+          <div className="header-breadcrumbs">
+            <h2>{settings.company_name}</h2>
+          </div>
+          <div className="header-user-info">
+            <div className="user-details">
+              <span className="user-email">{user?.email}</span>
+              <span className={`badge badge-${role === 'ADMIN_TI' ? 'danger' : 'info'}`}>{role}</span>
             </div>
+          </div>
+        </header>
 
-            <style>{`
+        <main className="page-content">
+          <Outlet />
+        </main>
+      </div>
+
+      <style>{`
         .layout-container {
           display: flex;
           min-height: 100vh;
@@ -86,8 +88,8 @@ function Layout() {
           overflow-y: auto;
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
 
 export default Layout;

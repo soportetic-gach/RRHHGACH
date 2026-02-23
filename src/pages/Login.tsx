@@ -2,98 +2,104 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Building2, KeyRound, User } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useSettings } from '../context/SettingsContext';
 
 export default function Login() {
-    const [identifier, setIdentifier] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
+  const { settings } = useSettings();
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-        try {
-            // First, get the email associated with the identifier if the user inserts identification
-            // In this demo, if the identifier has '@', we treat it as email directly
-            let loginEmail = identifier;
+    try {
+      // First, get the email associated with the identifier if the user inserts identification
+      // In this demo, if the identifier has '@', we treat it as email directly
+      let loginEmail = identifier;
 
-            if (!identifier.includes('@')) {
-                const { data: employeeData, error: employeeError } = await supabase
-                    .from('employees')
-                    .select('email')
-                    .eq('identification', identifier)
-                    .single();
+      if (!identifier.includes('@')) {
+        const { data: employeeData, error: employeeError } = await supabase
+          .from('employees')
+          .select('email')
+          .eq('identification', identifier)
+          .single();
 
-                if (employeeError || !employeeData) {
-                    throw new Error('Identificación no encontrada');
-                }
-                loginEmail = employeeData.email;
-            }
-
-            const { error } = await supabase.auth.signInWithPassword({
-                email: loginEmail,
-                password: password,
-            });
-
-            if (error) throw error;
-            toast.success('Bienvenido al Sistema');
-
-        } catch (error: any) {
-            toast.error(error.message || 'Error al iniciar sesión');
-        } finally {
-            setLoading(false);
+        if (employeeError || !employeeData) {
+          throw new Error('Identificación no encontrada');
         }
-    };
+        loginEmail = employeeData.email;
+      }
 
-    return (
-        <div className="login-container">
-            <div className="login-card">
-                <div className="login-header">
-                    <div className="logo-circle">
-                        <Building2 size={36} className="logo-icon" />
-                    </div>
-                    <h1>HR Enterprise</h1>
-                    <p>Portal de Empleados y Administración</p>
-                </div>
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: password,
+      });
 
-                <form onSubmit={handleLogin} className="login-form">
-                    <div className="form-group">
-                        <label className="form-label">Identificación o Correo</label>
-                        <div className="input-with-icon">
-                            <User size={18} className="input-icon" />
-                            <input
-                                type="text"
-                                className="form-input"
-                                value={identifier}
-                                onChange={(e) => setIdentifier(e.target.value)}
-                                placeholder="Ingresa tu ID o correo"
-                                required
-                            />
-                        </div>
-                    </div>
+      if (error) throw error;
+      toast.success('Bienvenido al Sistema');
 
-                    <div className="form-group">
-                        <label className="form-label">Contraseña</label>
-                        <div className="input-with-icon">
-                            <KeyRound size={18} className="input-icon" />
-                            <input
-                                type="password"
-                                className="form-input"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="********"
-                                required
-                            />
-                        </div>
-                    </div>
+    } catch (error: any) {
+      toast.error(error.message || 'Error al iniciar sesión');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                    <button type="submit" className="btn btn-primary login-btn" disabled={loading}>
-                        {loading ? 'Ingresando...' : 'Iniciar Sesión'}
-                    </button>
-                </form>
+  return (
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <div className="logo-circle" style={{ background: settings.login_logo_url ? 'transparent' : 'var(--info-bg)' }}>
+            {settings.login_logo_url ? (
+              <img src={settings.login_logo_url} alt="Logo" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+            ) : (
+              <Building2 size={36} className="logo-icon" />
+            )}
+          </div>
+          <h1>{settings.company_name}</h1>
+          <p>Portal de Empleados y Administración</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="login-form">
+          <div className="form-group">
+            <label className="form-label">Identificación o Correo</label>
+            <div className="input-with-icon">
+              <User size={18} className="input-icon" />
+              <input
+                type="text"
+                className="form-input"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="Ingresa tu ID o correo"
+                required
+              />
             </div>
+          </div>
 
-            <style>{`
+          <div className="form-group">
+            <label className="form-label">Contraseña</label>
+            <div className="input-with-icon">
+              <KeyRound size={18} className="input-icon" />
+              <input
+                type="password"
+                className="form-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="********"
+                required
+              />
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-primary login-btn" disabled={loading}>
+            {loading ? 'Ingresando...' : 'Iniciar Sesión'}
+          </button>
+        </form>
+      </div>
+
+      <style>{`
         .login-container {
           min-height: 100vh;
           display: flex;
@@ -168,6 +174,6 @@ export default function Login() {
           box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.3);
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

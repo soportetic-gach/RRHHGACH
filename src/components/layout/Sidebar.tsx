@@ -5,10 +5,12 @@ import {
     Calendar,
     Settings,
     LogOut,
-    Building2,
     Wallet,
-    Gift
+    Gift,
+    Palette,
+    Building2
 } from 'lucide-react';
+import { useSettings } from '../../context/SettingsContext';
 
 interface SidebarProps {
     role: string | null;
@@ -16,11 +18,17 @@ interface SidebarProps {
 }
 
 function Sidebar({ role, onSignOut }: SidebarProps) {
+    const { settings } = useSettings();
+
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
-                <Building2 className="sidebar-logo" size={32} />
-                <span className="sidebar-title">Enterprise HR</span>
+                {settings.logo_url ? (
+                    <img src={settings.logo_url} alt="Logo" className="sidebar-logo" style={{ maxHeight: '32px', maxWidth: '32px', objectFit: 'contain' }} />
+                ) : (
+                    <Building2 className="sidebar-logo" size={32} />
+                )}
+                <span className="sidebar-title" style={{ fontSize: '1.1rem' }}>{settings.company_name}</span>
             </div>
 
             <nav className="sidebar-nav">
@@ -72,6 +80,13 @@ function Sidebar({ role, onSignOut }: SidebarProps) {
                     <NavLink to="/catalogos" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                         <Settings size={20} />
                         <span>Catálogos</span>
+                    </NavLink>
+                )}
+
+                {role === 'ADMIN_TI' && (
+                    <NavLink to="/editor-sitio" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <Palette size={20} />
+                        <span>Editor del Sitio</span>
                     </NavLink>
                 )}
             </nav>

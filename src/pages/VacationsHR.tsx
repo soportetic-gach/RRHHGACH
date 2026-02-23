@@ -605,9 +605,43 @@ export default function VacationsHR() {
                                     />
                                 </div>
                             </div>
-                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
-                                <button type="button" className="btn" onClick={() => setEditModal({ ...editModal, isOpen: false })}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary" disabled={loading}>Guardar Cambios</button>
+                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
+                                <button type="button" className="btn" style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }} disabled={loading} onClick={async () => {
+                                    const reason = window.prompt('Indique el motivo de la denegación (ej. Cancelación por parte del empleado, Error en solicitud):');
+                                    if (reason === null) return;
+                                    if (reason.trim() === '') {
+                                        toast.error('El motivo de la denegación es obligatorio');
+                                        return;
+                                    }
+                                    try {
+                                        setLoading(true);
+                                        const { error } = await supabase.from('vacation_requests').update({ status: 'RECHAZADO', rejection_reason: reason.trim() }).eq('id', editModal.requestId);
+                                        if (error) throw error;
+
+                                        const consumesDays = (type: string) => ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(type || 'Vacaciones');
+                                        if (consumesDays(editModal.old_leave_type)) {
+                                            const hrEmployee = employees.find(e => e.id === editModal.employee_id);
+                                            if (hrEmployee) {
+                                                const currentBalance = hrEmployee.vacation_days_available;
+                                                const newBalance = currentBalance + editModal.old_days_requested;
+                                                const { error: empError } = await supabase.from('employees').update({ vacation_days_available: newBalance }).eq('id', editModal.employee_id);
+                                                if (!empError) {
+                                                    const { data: userData } = await supabase.auth.getUser();
+                                                    if (userData.user && userData.user.id) {
+                                                        await supabase.from('vacation_balance_logs').insert([{ employee_id: editModal.employee_id, admin_id: userData.user.id, previous_balance: currentBalance, adjustment: editModal.old_days_requested, new_balance: newBalance, justification: `Reversión por denegación (Modificación) - ${reason.trim()}` }]);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        toast.success('Solicitud denegada y saldos actualizados');
+                                        setEditModal({ ...editModal, isOpen: false });
+                                        fetchRequests();
+                                    } catch (err) { toast.error('Error al denegar la solicitud'); } finally { setLoading(false); }
+                                }}>Denegar Solicitud</button>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <button type="button" className="btn" onClick={() => setEditModal({ ...editModal, isOpen: false })}>Cancelar</button>
+                                    <button type="submit" className="btn btn-primary" disabled={loading}>Guardar Cambios</button>
+                                </div>
                             </div>
                         </form>
                     </div>
