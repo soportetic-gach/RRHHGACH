@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Plus, Edit2, ShieldAlert, X, Camera, Upload, Download } from 'lucide-react';
+import { Search, Plus, Edit2, ShieldAlert, X, Camera, Upload, Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
 
@@ -40,6 +40,8 @@ export default function Employees() {
         hire_date: new Date().toISOString().split('T')[0],
         birth_date: '',
         photo_url: '',
+        is_active: true,
+        inactive_reason: '',
     });
 
     useEffect(() => {
@@ -112,6 +114,8 @@ export default function Employees() {
                 hire_date: emp.hire_date || new Date().toISOString().split('T')[0],
                 birth_date: emp.birth_date || '',
                 photo_url: emp.photo_url || '',
+                is_active: emp.is_active !== false,
+                inactive_reason: emp.inactive_reason || '',
             });
         } else {
             setEditingEmployee(null);
@@ -138,6 +142,8 @@ export default function Employees() {
                 hire_date: new Date().toISOString().split('T')[0],
                 birth_date: '',
                 photo_url: '',
+                is_active: true,
+                inactive_reason: '',
             });
         }
         setIsModalOpen(true);
@@ -195,6 +201,8 @@ export default function Employees() {
                     hire_date: formData.hire_date,
                     birth_date: formData.birth_date || null,
                     photo_url: finalPhotoUrl,
+                    is_active: formData.is_active,
+                    inactive_reason: formData.is_active ? null : formData.inactive_reason,
                 }).eq('id', editingEmployee.id);
 
                 if (error) throw error;
@@ -234,6 +242,19 @@ export default function Employees() {
             else toast.error('Ocurrió un error al registrar al empleado');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm("¿Estás seguro de que deseas eliminar este colaborador? Esta acción borrará permanentemente sus datos y accesos. No se puede deshacer.")) {
+            try {
+                const { error } = await supabase.from('employees').delete().eq('id', id);
+                if (error) throw error;
+                toast.success('Empleado eliminado correctamente');
+                fetchEmployees();
+            } catch (error) {
+                toast.error('Ocurrió un error al eliminar el empleado. Es posible que tenga registros asociados como vacaciones o reportes.');
+            }
         }
     };
 
@@ -327,14 +348,17 @@ export default function Employees() {
                                             <td>{emp.positions?.name || 'N/A'}</td>
                                             <td>{emp.campuses?.name || 'N/A'}</td>
                                             <td>
-                                                <span className={`badge ${emp.employee_status === 'ACTIVO' ? 'badge-success' : 'badge-danger'}`}>
-                                                    {emp.employee_status}
+                                                <span className={`badge ${emp.is_active !== false ? 'badge-success' : 'badge-danger'}`}>
+                                                    {emp.is_active !== false ? 'Activo' : 'Inactivo'}
                                                 </span>
                                             </td>
                                             <td>
                                                 <div className="action-buttons">
                                                     <button className="btn-icon" title="Editar Expediente" onClick={() => openModal(emp)}>
                                                         <Edit2 size={16} />
+                                                    </button>
+                                                    <button className="btn-icon" title="Eliminar Colaborador" onClick={() => handleDelete(emp.id)} style={{ color: '#ef4444' }}>
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -533,6 +557,29 @@ export default function Employees() {
                                     {campuses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
+
+                            {editingEmployee && (
+                                <>
+                                    <div className="section-title">Estado Operativo</div>
+                                    <div className="form-group">
+                                        <label className="form-label">Estado</label>
+                                        <select className="form-select" value={formData.is_active ? 'true' : 'false'} onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'true' })}>
+                                            <option value="true">Activo</option>
+                                            <option value="false">Inactivo</option>
+                                        </select>
+                                    </div>
+                                    {!formData.is_active && (
+                                        <div className="form-group">
+                                            <label className="form-label">Motivo de Inactividad</label>
+                                            <select className="form-select" required value={formData.inactive_reason} onChange={(e) => setFormData({ ...formData, inactive_reason: e.target.value })}>
+                                                <option value="">Seleccione un motivo...</option>
+                                                <option value="Temporal">Temporal</option>
+                                                <option value="Salida de Empresa">Salida de Empresa</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                </>
+                            )}
 
                             <div className="modal-footer" style={{ gridColumn: '1 / -1', marginTop: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
                                 {!editingEmployee && (
