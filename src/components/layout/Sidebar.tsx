@@ -17,9 +17,11 @@ import { useSettings } from '../../context/SettingsContext';
 interface SidebarProps {
     role: string | null;
     onSignOut: () => Promise<void>;
+    employeeName?: string;
+    employeePhoto?: string;
 }
 
-function Sidebar({ role, onSignOut }: SidebarProps) {
+function Sidebar({ role, onSignOut, employeeName, employeePhoto }: SidebarProps) {
     const { settings } = useSettings();
 
     return (
@@ -32,6 +34,19 @@ function Sidebar({ role, onSignOut }: SidebarProps) {
                 )}
                 <span className="sidebar-title" style={{ fontSize: '1.1rem' }}>{settings.company_name}</span>
             </div>
+
+            {employeeName && (
+                <div className="sidebar-profile" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1.5rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '1rem' }}>
+                    {employeePhoto ? (
+                        <img src={employeePhoto} alt="Perfil" style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.2)', marginBottom: '0.75rem' }} />
+                    ) : (
+                        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '2px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem', fontSize: '1.5rem', fontWeight: 600, color: '#fff' }}>
+                            {employeeName.charAt(0)}
+                        </div>
+                    )}
+                    <span style={{ color: '#fff', fontWeight: 500, fontSize: '0.9rem', textAlign: 'center' }}>{employeeName}</span>
+                </div>
+            )}
 
             <nav className="sidebar-nav">
                 {role === 'ADMIN_TI' && (

@@ -9,17 +9,19 @@ function Layout() {
   const { user, role, signOut } = useAuth();
   const { settings } = useSettings();
   const [employeeName, setEmployeeName] = useState('');
+  const [employeePhoto, setEmployeePhoto] = useState('');
 
   useEffect(() => {
     if (user) {
       supabase
         .from('employees')
-        .select('first_name, last_name')
+        .select('first_name, last_name, photo_url')
         .eq('id', user.id)
         .single()
         .then(({ data, error }) => {
           if (!error && data) {
             setEmployeeName(`${data.first_name} ${data.last_name}`);
+            setEmployeePhoto(data.photo_url || '');
           }
         });
     }
@@ -27,7 +29,7 @@ function Layout() {
 
   return (
     <div className="layout-container">
-      <Sidebar role={role} onSignOut={signOut} />
+      <Sidebar role={role} onSignOut={signOut} employeeName={employeeName} employeePhoto={employeePhoto} />
 
       <div className="main-content">
         <header className="top-header">
