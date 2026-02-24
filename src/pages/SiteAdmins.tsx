@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Shield, Search, Edit2, X, ShieldAlert, Check } from 'lucide-react';
+import { Shield, Search, X, ShieldAlert, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SiteAdmins() {

@@ -15,6 +15,7 @@ export default function VacationBalances() {
     const [saving, setSaving] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
     const [adjustmentData, setAdjustmentData] = useState({
+        targetBalance: 'vacation', // 'vacation' | 'hours'
         adjustmentType: 'increase',
         days: '',
         justification: ''
@@ -43,6 +44,7 @@ export default function VacationBalances() {
                     last_name, 
                     identification, 
                     vacation_days_available,
+                    accumulated_hours,
                     campus_id,
                     departments (name),
                     campuses (name),
@@ -76,6 +78,7 @@ export default function VacationBalances() {
     const openAdjustmentModal = (emp: any) => {
         setSelectedEmployee(emp);
         setAdjustmentData({
+            targetBalance: 'vacation',
             adjustmentType: 'increase',
             days: '',
             justification: ''
@@ -94,20 +97,21 @@ export default function VacationBalances() {
                 return;
             }
 
-            const currentBalance = parseFloat(selectedEmployee.vacation_days_available || 0);
+            const isVacation = adjustmentData.targetBalance === 'vacation';
+            const currentBalance = parseFloat(isVacation ? (selectedEmployee.vacation_days_available || 0) : (selectedEmployee.accumulated_hours || 0));
             const isIncrease = adjustmentData.adjustmentType === 'increase';
             const finalAdjustment = isIncrease ? adjustmentValue : -adjustmentValue;
             const newBalance = currentBalance + finalAdjustment;
 
             // Transacción: Insertar el log y actualizar el saldo del empleado
             const { error: logError } = await supabase
-                .from('vacation_balance_logs')
+                .from(isVacation ? 'vacation_balance_logs' : 'accumulated_hours_logs')
                 .insert({
                     employee_id: selectedEmployee.id,
                     admin_id: user?.id, // ID del administrador (RRHH) realizando el ajuste
-                    previous_balance: currentBalance,
+                    [isVacation ? 'previous_balance' : 'previous_hours']: currentBalance,
                     adjustment: finalAdjustment,
-                    new_balance: newBalance,
+                    [isVacation ? 'new_balance' : 'new_hours']: newBalance,
                     justification: adjustmentData.justification
                 });
 
@@ -115,7 +119,7 @@ export default function VacationBalances() {
 
             const { error: empError } = await supabase
                 .from('employees')
-                .update({ vacation_days_available: newBalance })
+                .update(isVacation ? { vacation_days_available: newBalance } : { accumulated_hours: newBalance })
                 .eq('id', selectedEmployee.id);
 
             if (empError) throw empError;
@@ -304,9 +308,16 @@ export default function VacationBalances() {
                                                             </span>
                                                         </td>
                                                         <td>
-                                                            <span className="badge" style={{ fontSize: '1rem', padding: '0.4rem 0.8rem', backgroundColor: currentBalance > 0 ? '#dcfce7' : '#fef2f2', color: currentBalance > 0 ? '#166534' : '#ef4444' }}>
-                                                                {currentBalance === 0 ? 'Sin días disponibles' : `${currentBalance} Días`}
-                                                            </span>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                                                                <span className="badge" style={{ fontSize: '1rem', padding: '0.4rem 0.8rem', backgroundColor: currentBalance > 0 ? '#dcfce7' : '#fef2f2', color: currentBalance > 0 ? '#166534' : '#ef4444' }}>
+                                                                    {currentBalance === 0 ? 'Sin días disponibles' : `${currentBalance} Días`}
+                                                                </span>
+                                                                {(emp.accumulated_hours || 0) > 0 && (
+                                                                    <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500, padding: '0 0.25rem' }}>
+                                                                        {emp.accumulated_hours} Horas Acum.
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                     </>
                                                 );
@@ -360,9 +371,21 @@ export default function VacationBalances() {
                         </div>
 
                         <form onSubmit={handleAdjustment} style={{ padding: '1.5rem' }}>
-                            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0' }}>
-                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Saldo actual disponible:</p>
-                                <p style={{ margin: '0.5rem 0 0 0', color: 'var(--primary-color)', fontSize: '1.5rem', fontWeight: 700 }}>{selectedEmployee.vacation_days_available || 0} Días</p>
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                                <div style={{ flex: 1, minWidth: '200px', padding: '1rem', background: adjustmentData.targetBalance === 'vacation' ? '#f8fafc' : 'white', borderRadius: 'var(--radius-md)', border: adjustmentData.targetBalance === 'vacation' ? '2px solid var(--primary-color)' : '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s' }} onClick={() => setAdjustmentData({ ...adjustmentData, targetBalance: 'vacation' })}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Días de Vacaciones:</p>
+                                        <input type="radio" checked={adjustmentData.targetBalance === 'vacation'} readOnly style={{ accentColor: 'var(--primary-color)' }} />
+                                    </div>
+                                    <p style={{ margin: '0.5rem 0 0 0', color: 'var(--primary-color)', fontSize: '1.5rem', fontWeight: 700 }}>{selectedEmployee.vacation_days_available || 0} Días</p>
+                                </div>
+                                <div style={{ flex: 1, minWidth: '200px', padding: '1rem', background: adjustmentData.targetBalance === 'hours' ? '#fffbeb' : 'white', borderRadius: 'var(--radius-md)', border: adjustmentData.targetBalance === 'hours' ? '2px solid #f59e0b' : '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s' }} onClick={() => setAdjustmentData({ ...adjustmentData, targetBalance: 'hours' })}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Horas Acumuladas:</p>
+                                        <input type="radio" checked={adjustmentData.targetBalance === 'hours'} readOnly style={{ accentColor: '#f59e0b' }} />
+                                    </div>
+                                    <p style={{ margin: '0.5rem 0 0 0', color: '#f59e0b', fontSize: '1.5rem', fontWeight: 700 }}>{selectedEmployee.accumulated_hours || 0} Horas</p>
+                                </div>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
@@ -377,7 +400,7 @@ export default function VacationBalances() {
                                                 checked={adjustmentData.adjustmentType === 'increase'}
                                                 onChange={(e) => setAdjustmentData({ ...adjustmentData, adjustmentType: e.target.value })}
                                             />
-                                            <span style={{ color: '#16a34a', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Plus size={16} /> Aumentar Días</span>
+                                            <span style={{ color: '#16a34a', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Plus size={16} /> Aumentar {adjustmentData.targetBalance === 'vacation' ? 'Días' : 'Horas'}</span>
                                         </label>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                                             <input
@@ -387,13 +410,13 @@ export default function VacationBalances() {
                                                 checked={adjustmentData.adjustmentType === 'decrease'}
                                                 onChange={(e) => setAdjustmentData({ ...adjustmentData, adjustmentType: e.target.value })}
                                             />
-                                            <span style={{ color: '#dc2626', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}><UserMinus size={16} /> Disminuir Días</span>
+                                            <span style={{ color: '#dc2626', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}><UserMinus size={16} /> Disminuir {adjustmentData.targetBalance === 'vacation' ? 'Días' : 'Horas'}</span>
                                         </label>
                                     </div>
                                 </div>
 
                                 <div className="form-group">
-                                    <label className="form-label">Cantidad de Días a Ajustar</label>
+                                    <label className="form-label">Cantidad a Ajustar ({adjustmentData.targetBalance === 'hours' ? 'Horas' : 'Días'})</label>
                                     <input
                                         type="number"
                                         step="0.5"
@@ -402,6 +425,7 @@ export default function VacationBalances() {
                                         required
                                         value={adjustmentData.days}
                                         onChange={(e) => setAdjustmentData({ ...adjustmentData, days: e.target.value })}
+                                        placeholder={adjustmentData.targetBalance === 'vacation' ? "Ej: 1.5" : "Ej: 8"}
                                     />
                                 </div>
 

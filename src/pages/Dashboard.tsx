@@ -5,7 +5,6 @@ import {
   UserMinus,
   Clock,
   CheckCircle,
-  XCircle,
   BarChart4
 } from 'lucide-react';
 
