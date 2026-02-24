@@ -265,6 +265,7 @@ export default function VacationBalances() {
                                     <th>Saldo Inicial</th>
                                     <th>Días Utilizados</th>
                                     <th>Saldo Disponible</th>
+                                    <th>Horas Acum.</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -308,16 +309,14 @@ export default function VacationBalances() {
                                                             </span>
                                                         </td>
                                                         <td>
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                                                                <span className="badge" style={{ fontSize: '1rem', padding: '0.4rem 0.8rem', backgroundColor: currentBalance > 0 ? '#dcfce7' : '#fef2f2', color: currentBalance > 0 ? '#166534' : '#ef4444' }}>
-                                                                    {currentBalance === 0 ? 'Sin días disponibles' : `${currentBalance} Días`}
-                                                                </span>
-                                                                {(emp.accumulated_hours || 0) > 0 && (
-                                                                    <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500, padding: '0 0.25rem' }}>
-                                                                        {emp.accumulated_hours} Horas Acum.
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                            <span className="badge" style={{ fontSize: '1rem', padding: '0.4rem 0.8rem', backgroundColor: currentBalance > 0 ? '#dcfce7' : '#fef2f2', color: currentBalance > 0 ? '#166534' : '#ef4444' }}>
+                                                                {currentBalance === 0 ? 'Sin días disponibles' : `${currentBalance} Días`}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span style={{ fontSize: '1rem', fontWeight: 600, color: (emp.accumulated_hours || 0) > 0 ? '#f59e0b' : '#64748b' }}>
+                                                                {emp.accumulated_hours || 0} Horas
+                                                            </span>
                                                         </td>
                                                     </>
                                                 );
@@ -348,7 +347,7 @@ export default function VacationBalances() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={6} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                                        <td colSpan={7} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
                                             <ShieldAlert size={32} style={{ margin: '0 auto 0.75rem', color: '#94a3b8' }} />
                                             <p>No se encontraron empleados</p>
                                         </td>
