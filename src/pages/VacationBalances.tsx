@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Calculator, UserMinus, Plus, ShieldAlert, X } from 'lucide-react';
+import { Search, Calculator, UserMinus, Plus, ShieldAlert, X, FileText, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,6 +19,12 @@ export default function VacationBalances() {
         days: '',
         justification: ''
     });
+
+    // Report Modal State
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [reportData, setReportData] = useState<any[]>([]);
+    const [reportEmployee, setReportEmployee] = useState<any>(null);
+    const [loadingReport, setLoadingReport] = useState(false);
 
     useEffect(() => {
         if (role) {
@@ -125,6 +131,91 @@ export default function VacationBalances() {
         }
     };
 
+    const openReportModal = async (emp: any) => {
+        setReportEmployee(emp);
+        setReportModalOpen(true);
+        setLoadingReport(true);
+        try {
+            // Fetch logs for this employee
+            const { data: logsData, error: logsError } = await supabase
+                .from('vacation_balance_logs')
+                .select('created_at, previous_balance, adjustment, new_balance, justification')
+                .eq('employee_id', emp.id)
+                .order('created_at', { ascending: false });
+
+            if (logsError) throw logsError;
+
+            // Fetch vacation requests that are approved or affect something
+            const { data: reqData, error: reqError } = await supabase
+                .from('vacation_requests')
+                .select('created_at, start_date, end_date, days_requested, status, leave_type')
+                .eq('employee_id', emp.id)
+                .eq('status', 'APROBADO')
+                .order('created_at', { ascending: false });
+
+            if (reqError) throw reqError;
+
+            const combinedData = [];
+
+            // Add manual adjustments
+            if (logsData) {
+                for (const log of logsData) {
+                    // Check if this log is just an approval from JS (which already inserted a log)
+                    // HR also inserts log when approving. We filter duplicates by checking if justification contains the request
+                    // Actually, to make it simple: we list the log as 'Ajuste Manual / Movimiento'
+                    combinedData.push({
+                        type: 'MOVIMIENTO_SALDO',
+                        date: new Date(log.created_at),
+                        label: log.justification || 'Ajuste en sistema',
+                        days: log.adjustment,
+                        affectsBalance: true
+                    });
+                }
+            }
+
+            // Add approved vacations
+            if (reqData) {
+                // Determine if leave type affects balance
+                // If the leave type is in the known list or we don't know it, we just display it.
+                // We don't add duplicate entries if the req was already inserted by JS into logs.
+                // It's safer to just list requests that DON'T affect balance as well.
+                for (const req of reqData) {
+                    const lType = req.leave_type || 'Vacaciones';
+                    const consumesDays = ['Vacaciones', 'Día de Cumpleaños', 'Cambio por Horas Acumuladas'].includes(lType);
+
+                    combinedData.push({
+                        type: 'SOLICITUD',
+                        date: new Date(req.created_at),
+                        label: `Sol. Aprobada: ${lType} (del ${new Date(req.start_date + 'T00:00:00').toLocaleDateString()} al ${new Date(req.end_date + 'T00:00:00').toLocaleDateString()})`,
+                        days: req.days_requested,
+                        affectsBalance: consumesDays
+                    });
+                }
+            }
+
+            // Sort by date descending
+            combinedData.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+            // Remove duplicates that might occur if HR logs and request overlap in logic (heuristic based on date and label)
+            const uniqueData = combinedData.filter((item, index, self) =>
+                index === self.findIndex((t) => (
+                    t.type === 'MOVIMIENTO_SALDO' && item.type === 'SOLICITUD' ? false : t.label === item.label && t.date.getTime() === item.date.getTime()
+                ))
+            );
+
+            setReportData(uniqueData);
+
+        } catch (error) {
+            toast.error('Error al cargar movimientos');
+        } finally {
+            setLoadingReport(false);
+        }
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
     const filteredEmployees = employees.filter(emp =>
         emp.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         emp.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -170,7 +261,7 @@ export default function VacationBalances() {
                                     <th>Saldo Inicial</th>
                                     <th>Días Utilizados</th>
                                     <th>Saldo Disponible</th>
-                                    {role !== 'DIRECTOR_SEDE' && <th>Acciones</th>}
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -220,9 +311,17 @@ export default function VacationBalances() {
                                                     </>
                                                 );
                                             })()}
-                                            {role !== 'DIRECTOR_SEDE' && (
-                                                <td>
-                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        className="btn-icon"
+                                                        title="Ver Movimientos (PDF)"
+                                                        onClick={() => openReportModal(emp)}
+                                                        style={{ padding: '0.375rem', background: '#f8fafc', borderRadius: 'var(--radius-sm)', color: '#64748b', border: '1px solid #e2e8f0', cursor: 'pointer' }}
+                                                    >
+                                                        <FileText size={18} />
+                                                    </button>
+                                                    {role !== 'DIRECTOR_SEDE' && (
                                                         <button
                                                             className="btn-icon"
                                                             title="Ajustar Saldo Manualmente"
@@ -231,9 +330,9 @@ export default function VacationBalances() {
                                                         >
                                                             <Calculator size={18} />
                                                         </button>
-                                                    </div>
-                                                </td>
-                                            )}
+                                                    )}
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))
                                 ) : (
@@ -329,6 +428,93 @@ export default function VacationBalances() {
                     </div>
                 </div>
             )}
+
+            {/* Print Modal Overlay */}
+            {reportModalOpen && reportEmployee && (
+                <div className="modal-overlay dont-print" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div className="modal-content" style={{ background: 'var(--surface-color)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-xl)', animation: 'slideIn 0.3s ease-out' }}>
+                        <div className="modal-header dont-print" style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 10 }}>
+                            <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text-primary)' }}>Movimientos de Saldo: {reportEmployee.first_name} {reportEmployee.last_name}</h2>
+                            <button className="modal-close" onClick={() => setReportModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.25rem' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="modal-body" id="print-section" style={{ padding: '2rem' }}>
+                            <div className="print-header" style={{ marginBottom: '2rem', textAlign: 'center' }}>
+                                <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>Reporte de Movimientos de Vacaciones y Licencias</h3>
+                                <p style={{ margin: '0 0 0.25rem 0', color: 'var(--text-secondary)' }}><strong>Colaborador:</strong> {reportEmployee.first_name} {reportEmployee.last_name}</p>
+                                <p style={{ margin: 0, color: 'var(--text-secondary)' }}><strong>Identificación:</strong> {reportEmployee.identification} | <strong>Departamento:</strong> {reportEmployee.departments?.name || 'N/A'}</p>
+                            </div>
+
+                            {loadingReport ? (
+                                <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Cargando datos...</div>
+                            ) : (
+                                <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+                                    <thead>
+                                        <tr>
+                                            <th style={{ border: '1px solid #e2e8f0', padding: '0.75rem', textAlign: 'left', background: '#f8fafc', color: 'var(--text-primary)' }}>Fecha</th>
+                                            <th style={{ border: '1px solid #e2e8f0', padding: '0.75rem', textAlign: 'left', background: '#f8fafc', color: 'var(--text-primary)' }}>Descripción / Tipo</th>
+                                            <th style={{ border: '1px solid #e2e8f0', padding: '0.75rem', textAlign: 'center', background: '#f8fafc', color: 'var(--text-primary)' }}>Días</th>
+                                            <th style={{ border: '1px solid #e2e8f0', padding: '0.75rem', textAlign: 'center', background: '#f8fafc', color: 'var(--text-primary)' }}>¿Afecta Saldo?</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {reportData.length > 0 ? reportData.map((item, idx) => (
+                                            <tr key={idx}>
+                                                <td style={{ border: '1px solid #e2e8f0', padding: '0.75rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                                    {item.date.toLocaleDateString()}
+                                                </td>
+                                                <td style={{ border: '1px solid #e2e8f0', padding: '0.75rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                                    {item.label}
+                                                </td>
+                                                <td style={{ border: '1px solid #e2e8f0', padding: '0.75rem', textAlign: 'center', fontWeight: 'bold', color: item.days > 0 ? '#16a34a' : '#ef4444' }}>
+                                                    {item.days > 0 ? `+${item.days}` : item.days}
+                                                </td>
+                                                <td style={{ border: '1px solid #e2e8f0', padding: '0.75rem', textAlign: 'center' }}>
+                                                    {item.affectsBalance ? <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Sí</span> : <span style={{ color: '#64748b' }}>No</span>}
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', border: '1px solid #e2e8f0', color: '#64748b' }}>
+                                                    No hay movimientos registrados
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
+
+                            <div className="dont-print modal-footer" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                                <button className="btn" onClick={() => setReportModalOpen(false)}>Cerrar</button>
+                                <button className="btn btn-primary" onClick={handlePrint} disabled={loadingReport || reportData.length === 0} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <Printer size={18} /> Imprimir / PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                .btn-icon:hover { background: #e2e8f0 !important; color: var(--primary-color) !important; }
+
+                @media print {
+                    body * { visibility: hidden; }
+                    .dont-print { display: none !important; }
+                    #print-section, #print-section * { visibility: visible; }
+                    #print-section {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                    }
+                    .print-table th { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
+                }
+
+                @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+            `}</style>
         </div>
     );
 }
