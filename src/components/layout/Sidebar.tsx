@@ -12,6 +12,7 @@ import {
     Building2,
     FileText,
     Shield,
+    Clock,
     FileSpreadsheet
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
@@ -106,6 +107,13 @@ function Sidebar({ role, onSignOut, employeeName, employeePhoto }: SidebarProps)
                     <NavLink to="/saldos" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                         <FileText size={20} />
                         <span>Reportes de Vacaciones</span>
+                    </NavLink>
+                )}
+
+                {['ADMIN_TI', 'RRHH', 'GERENCIA', 'DIRECTOR_SEDE'].includes(role || '') && (
+                    <NavLink to="/horas-extras" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <Clock size={20} />
+                        <span>Control Horas Extras</span>
                     </NavLink>
                 )}
 

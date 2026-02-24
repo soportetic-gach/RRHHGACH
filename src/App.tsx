@@ -9,6 +9,7 @@ import VacationsHR from './pages/VacationsHR';
 import VacationsEmployee from './pages/VacationsEmployee';
 import Catalogs from './pages/Catalogs';
 import VacationBalances from './pages/VacationBalances';
+import ExtraHoursControl from './pages/ExtraHoursControl';
 import Birthdays from './pages/Birthdays';
 import SiteEditor from './pages/SiteEditor';
 import CampusDirectorsAdmin from './pages/CampusDirectorsAdmin';
@@ -88,8 +89,14 @@ function MainRoutes() {
         } />
 
         <Route path="saldos" element={
-          <ProtectedRoute allowedRoles={['ADMIN_TI', 'RRHH', 'DIRECTOR_SEDE']}>
+          <ProtectedRoute allowedRoles={['ADMIN_TI', 'RRHH', 'DIRECTOR_SEDE', 'GERENCIA']}>
             <VacationBalances />
+          </ProtectedRoute>
+        } />
+
+        <Route path="horas-extras" element={
+          <ProtectedRoute allowedRoles={['ADMIN_TI', 'RRHH', 'DIRECTOR_SEDE', 'GERENCIA']}>
+            <ExtraHoursControl />
           </ProtectedRoute>
         } />
 
